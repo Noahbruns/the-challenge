@@ -1,53 +1,97 @@
-import Link from "next/link";
+"use client";
 
-import { LatestPost } from "~/app/_components/post";
-import { api, HydrateClient } from "~/trpc/server";
+import { useEffect, useState } from "react";
+import { api } from "~/trpc/react";
+import { Layout } from "~/components/Layout";
+import { Dashboard } from "~/components/Dashboard";
+import { LogForm } from "~/components/LogForm";
+import { RegisterForm } from "~/components/RegisterForm";
+import { Trophy, LayoutDashboard, PenLine, UserPlus, RefreshCw } from "lucide-react";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
-export default async function Home() {
-  const hello = await api.post.hello({ text: "from tRPC" });
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
-  void api.post.getLatest.prefetch();
+export default function Home() {
+  const [activeTab, setActiveTab] = useState<"dashboard" | "log" | "register">("dashboard");
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem("push_challenge_user");
+    if (savedUser) {
+      setCurrentUser(savedUser);
+    }
+  }, []);
+
+  const utils = api.useUtils();
+
+  const handleRefresh = async () => {
+    await utils.achievement.getStats.invalidate();
+    await utils.user.getAll.invalidate();
+  };
 
   return (
-    <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-            Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
+    <Layout>
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <header className="mb-8 text-center">
+          <h1 className="text-4xl font-bold text-slate-800 flex items-center justify-center gap-3">
+            <Trophy className="text-amber-500 w-10 h-10" />
+            The Challenge 2026
           </h1>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/usage/first-steps"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">First Steps →</h3>
-              <div className="text-lg">
-                Just the basics - Everything you need to know to set up your
-                database and authentication.
-              </div>
-            </Link>
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/introduction"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">Documentation →</h3>
-              <div className="text-lg">
-                Learn more about Create T3 App, the libraries it uses, and how
-                to deploy it.
-              </div>
-            </Link>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl text-white">
-              {hello ? hello.greeting : "Loading tRPC query..."}
-            </p>
-          </div>
+        </header>
 
-          <LatestPost />
+        <nav className="flex flex-wrap gap-2 mb-8 bg-white p-2 rounded-xl shadow-sm">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all",
+              activeTab === "dashboard" ? "bg-slate-800 text-white shadow-md" : "text-slate-600 hover:bg-slate-50"
+            )}
+          >
+            <LayoutDashboard size={20} />
+            Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab("log")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all",
+              activeTab === "log" ? "bg-slate-800 text-white shadow-md" : "text-slate-600 hover:bg-slate-50"
+            )}
+          >
+            <PenLine size={20} />
+            Fortschritt
+          </button>
+          <button
+            onClick={() => setActiveTab("register")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all",
+              activeTab === "register" ? "bg-slate-800 text-white shadow-md" : "text-slate-600 hover:bg-slate-50"
+            )}
+          >
+            <UserPlus size={20} />
+            Registrierung
+          </button>
+          <button
+            onClick={handleRefresh}
+            className="flex items-center justify-center px-4 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+            title="Aktualisieren"
+          >
+            <RefreshCw size={20} />
+          </button>
+        </nav>
+
+        <div className="transition-all duration-300">
+          {activeTab === "dashboard" && <Dashboard currentUser={currentUser} setCurrentUser={setCurrentUser} />}
+          {activeTab === "log" && <LogForm currentUser={currentUser} onSuccess={() => setActiveTab("dashboard")} />}
+          {activeTab === "register" && <RegisterForm onSuccess={(name) => {
+            setCurrentUser(name);
+            localStorage.setItem("push_challenge_user", name);
+            setActiveTab("dashboard");
+          }} />}
         </div>
-      </main>
-    </HydrateClient>
+      </div>
+    </Layout>
   );
 }
