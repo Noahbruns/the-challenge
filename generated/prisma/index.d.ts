@@ -4613,6 +4613,7 @@ export namespace Prisma {
 
   export type GoalWhereUniqueInput = Prisma.AtLeast<{
     id?: string
+    userId_exercise?: GoalUserIdExerciseCompoundUniqueInput
     AND?: GoalWhereInput | GoalWhereInput[]
     OR?: GoalWhereInput[]
     NOT?: GoalWhereInput | GoalWhereInput[]
@@ -4623,7 +4624,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"Goal"> | Date | string
     updatedAt?: DateTimeFilter<"Goal"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
-  }, "id">
+  }, "id" | "userId_exercise">
 
   export type GoalOrderByWithAggregationInput = {
     id?: SortOrder
@@ -5028,6 +5029,11 @@ export namespace Prisma {
   export type UserScalarRelationFilter = {
     is?: UserWhereInput
     isNot?: UserWhereInput
+  }
+
+  export type GoalUserIdExerciseCompoundUniqueInput = {
+    userId: string
+    exercise: string
   }
 
   export type GoalCountOrderByAggregateInput = {

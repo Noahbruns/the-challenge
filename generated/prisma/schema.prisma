@@ -33,6 +33,7 @@ model Goal {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([userId, exercise])
   @@index([userId])
 }
 

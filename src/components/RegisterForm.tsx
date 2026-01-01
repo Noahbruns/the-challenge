@@ -19,12 +19,14 @@ export function RegisterForm({
   onSuccess: (name: string) => void;
 }) {
   const [name, setName] = useState(currentUser || "");
-  const [selection, setSelection] = useState<{
-    exercise: string;
-    level: "S" | "M" | "L" | "XL";
-    target: number;
-    unit: string;
-  } | null>(null);
+  const [selections, setSelections] = useState<
+    {
+      exercise: string;
+      level: "S" | "M" | "L" | "XL";
+      target: number;
+      unit: string;
+    }[]
+  >([]);
 
   const register = api.user.register.useMutation({
     onSuccess: () => {
@@ -32,14 +34,33 @@ export function RegisterForm({
     },
   });
 
+  const toggleSelection = (
+    ex: string,
+    level: "S" | "M" | "L" | "XL",
+    target: number,
+    unit: string
+  ) => {
+    setSelections((prev) => {
+      const exists = prev.find((s) => s.exercise === ex && s.level === level);
+      if (exists) {
+        return prev.filter((s) => !(s.exercise === ex && s.level === level));
+      }
+      // Keep only one level per exercise for simplicity and clarity
+      const otherLevelsRemoved = prev.filter((s) => s.exercise !== ex);
+      return [...otherLevelsRemoved, { exercise: ex, level, target, unit }];
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name && selection) {
+    if (name && selections.length > 0) {
       register.mutate({
         name,
-        exercise: selection.exercise,
-        target: selection.target * 12, // Annual target
-        unit: selection.unit,
+        goals: selections.map((s) => ({
+          exercise: s.exercise,
+          target: s.target * 12, // Annual target
+          unit: s.unit,
+        })),
       });
     }
   };
@@ -47,7 +68,7 @@ export function RegisterForm({
   return (
     <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
       <h2 className="text-2xl font-bold mb-6 text-center text-slate-800">
-        Neues Ziel registrieren
+        Ziele registrieren
       </h2>
       <form onSubmit={handleSubmit} className="space-y-8">
         {!currentUser && (
@@ -68,15 +89,15 @@ export function RegisterForm({
 
         <div className="space-y-4">
           <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-blue-800 text-sm text-center">
-            Wähle eine Schwierigkeitsstufe. Die Werte sind{" "}
-            <strong>Monatsziele</strong>.
+            Wähle deine Schwierigkeitsstufen. Die Werte sind{" "}
+            <strong>Monatsziele</strong>. Du kannst mehrere Übungen wählen!
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-center border-collapse">
               <thead className="bg-slate-800 text-white">
                 <tr>
-                  <th className="p-3 rounded-tl-xl">Übung</th>
+                  <th className="p-3 rounded-tl-xl text-left">Übung</th>
                   <th className="p-3">Einheit</th>
                   <th className="p-3 text-sm">S (Small)</th>
                   <th className="p-3 text-sm">M (Medium)</th>
@@ -94,28 +115,27 @@ export function RegisterForm({
                       {ex.exercise}
                     </td>
                     <td className="p-3 text-slate-400 text-sm">{ex.unit}</td>
-                    {(["S", "M", "L", "XL"] as const).map((lvl) => (
-                      <td
-                        key={lvl}
-                        onClick={() =>
-                          setSelection({
-                            exercise: ex.exercise,
-                            level: lvl,
-                            target: ex[lvl],
-                            unit: ex.unit,
-                          })
-                        }
-                        className={cn(
-                          "p-3 cursor-pointer transition-all border-l border-slate-50",
-                          selection?.exercise === ex.exercise &&
-                            selection?.level === lvl
-                            ? "bg-slate-800 text-white font-bold"
-                            : "text-slate-600 hover:bg-slate-100"
-                        )}
-                      >
-                        {ex[lvl]}
-                      </td>
-                    ))}
+                    {(["S", "M", "L", "XL"] as const).map((lvl) => {
+                      const isSelected = selections.some(
+                        (s) => s.exercise === ex.exercise && s.level === lvl
+                      );
+                      return (
+                        <td
+                          key={lvl}
+                          onClick={() =>
+                            toggleSelection(ex.exercise, lvl, ex[lvl], ex.unit)
+                          }
+                          className={cn(
+                            "p-3 cursor-pointer transition-all border-l border-slate-50",
+                            isSelected
+                              ? "bg-slate-800 text-white font-bold"
+                              : "text-slate-600 hover:bg-slate-100"
+                          )}
+                        >
+                          {ex[lvl]}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -123,21 +143,27 @@ export function RegisterForm({
           </div>
         </div>
 
-        {selection && (
-          <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl text-emerald-800 text-center animate-in fade-in slide-in-from-bottom-2">
-            <p className="font-semibold">
-              Gewählt: {selection.exercise} - {selection.target}{" "}
-              {selection.unit} / Monat
-            </p>
-            <p className="text-sm opacity-80">
-              Jahresziel: {selection.target * 12} {selection.unit}
-            </p>
+        {selections.length > 0 && (
+          <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl text-emerald-800 animate-in fade-in slide-in-from-bottom-2">
+            <h4 className="font-bold mb-2">Ausgewählte Ziele:</h4>
+            <ul className="text-sm space-y-1">
+              {selections.map((s) => (
+                <li key={s.exercise} className="flex justify-between">
+                  <span>
+                    {s.exercise} ({s.level})
+                  </span>
+                  <span>
+                    {s.target} {s.unit} / Monat
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
         <button
           type="submit"
-          disabled={!name || !selection || register.isPending}
+          disabled={!name || selections.length === 0 || register.isPending}
           className="w-full py-4 bg-slate-800 text-white rounded-xl font-bold text-lg hover:bg-slate-900 focus:ring-4 focus:ring-slate-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {register.isPending

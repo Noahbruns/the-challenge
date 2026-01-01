@@ -15,9 +15,15 @@ export const userRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().min(1),
-        exercise: z.string().min(1),
-        target: z.number().positive(),
-        unit: z.string().min(1),
+        goals: z
+          .array(
+            z.object({
+              exercise: z.string().min(1),
+              target: z.number().positive(),
+              unit: z.string().min(1),
+            })
+          )
+          .min(1),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -27,13 +33,29 @@ export const userRouter = createTRPCRouter({
         create: { name: input.name },
       });
 
-      return ctx.db.goal.create({
-        data: {
-          userId: user.id,
-          exercise: input.exercise,
-          target: input.target,
-          unit: input.unit,
-        },
-      });
+      // Using createMany or a loop if we want to ensure existing ones aren't duplicated
+      // but for registration we usually just add new ones.
+      // To be safe against duplicates (same exercise for same user):
+      for (const goal of input.goals) {
+        await ctx.db.goal.upsert({
+          where: {
+            userId_exercise: {
+              userId: user.id,
+              exercise: goal.exercise,
+            },
+          },
+          update: {
+            target: goal.target,
+            unit: goal.unit,
+          },
+          create: {
+            userId: user.id,
+            exercise: goal.exercise,
+            target: goal.target,
+            unit: goal.unit,
+          },
+        });
+      }
+      return user;
     }),
 });
