@@ -34,12 +34,18 @@ export function RegisterForm({
     },
   });
 
+  const { data: users } = api.user.getAll.useQuery();
+  const currentUserData = users?.find((u) => u.name === name);
+  const existingExercises = currentUserData?.goals.map((g) => g.exercise) || [];
+
   const toggleSelection = (
     ex: string,
     level: "S" | "M" | "L" | "XL",
     target: number,
     unit: string
   ) => {
+    if (existingExercises.includes(ex)) return;
+
     setSelections((prev) => {
       const exists = prev.find((s) => s.exercise === ex && s.level === level);
       if (exists) {
@@ -89,8 +95,8 @@ export function RegisterForm({
 
         <div className="space-y-4">
           <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-blue-800 text-sm text-center">
-            Wähle deine Schwierigkeitsstufen. Die Werte sind{" "}
-            <strong>Monatsziele</strong>. Du kannst mehrere Übungen wählen!
+            Wähle deine Schwierigkeitsstufen. Bereits registrierte Übungen sind
+            deaktiviert.
           </div>
 
           <div className="overflow-x-auto">
@@ -106,38 +112,53 @@ export function RegisterForm({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {EXERCISE_CATALOG.map((ex) => (
-                  <tr
-                    key={ex.exercise}
-                    className="hover:bg-slate-50 transition-colors"
-                  >
-                    <td className="p-3 font-semibold text-slate-700 text-left">
-                      {ex.exercise}
-                    </td>
-                    <td className="p-3 text-slate-400 text-sm">{ex.unit}</td>
-                    {(["S", "M", "L", "XL"] as const).map((lvl) => {
-                      const isSelected = selections.some(
-                        (s) => s.exercise === ex.exercise && s.level === lvl
-                      );
-                      return (
-                        <td
-                          key={lvl}
-                          onClick={() =>
-                            toggleSelection(ex.exercise, lvl, ex[lvl], ex.unit)
-                          }
-                          className={cn(
-                            "p-3 cursor-pointer transition-all border-l border-slate-50",
-                            isSelected
-                              ? "bg-slate-800 text-white font-bold"
-                              : "text-slate-600 hover:bg-slate-100"
-                          )}
-                        >
-                          {ex[lvl]}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                {EXERCISE_CATALOG.map((ex) => {
+                  const isExisting = existingExercises.includes(ex.exercise);
+                  return (
+                    <tr
+                      key={ex.exercise}
+                      className={cn(
+                        "transition-colors",
+                        isExisting
+                          ? "bg-slate-50 opacity-60"
+                          : "hover:bg-slate-50"
+                      )}
+                    >
+                      <td className="p-3 font-semibold text-slate-700 text-left">
+                        {ex.exercise}
+                      </td>
+                      <td className="p-3 text-slate-400 text-sm">{ex.unit}</td>
+                      {(["S", "M", "L", "XL"] as const).map((lvl) => {
+                        const isSelected = selections.some(
+                          (s) => s.exercise === ex.exercise && s.level === lvl
+                        );
+                        return (
+                          <td
+                            key={lvl}
+                            onClick={() =>
+                              toggleSelection(
+                                ex.exercise,
+                                lvl,
+                                ex[lvl],
+                                ex.unit
+                              )
+                            }
+                            className={cn(
+                              "p-3 transition-all border-l border-slate-50",
+                              isSelected
+                                ? "bg-slate-800 text-white font-bold"
+                                : isExisting
+                                ? "cursor-not-allowed text-slate-300"
+                                : "cursor-pointer text-slate-600 hover:bg-slate-100"
+                            )}
+                          >
+                            {ex[lvl]}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
